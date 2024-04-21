@@ -5,6 +5,7 @@ from PyQt5.QtCore import QTimer, Qt
 import cv2
 from ultralytics import YOLO
 from PIL import ImageQt
+from datetime import datetime
 
 class YOLO_GUI(QMainWindow):
     def __init__(self):
@@ -72,28 +73,37 @@ class YOLO_GUI(QMainWindow):
         self.pre_name_of_gesture = ""
         self.model = YOLO("YOLOv8Checkpoint/YOLOv8Checkpoint/train4/weights/best.pt")
 
+        self.last_detected_time = None
     def update_frame(self):
         ret, frame = self.video.read()
         if ret:
             results = self.model.predict(frame, show=False)
             if results and len(results[0].boxes) > 0:
                 names = self.model.names
+
                 for i, det in enumerate(results[0].boxes.xyxy):
                     x1, y1, x2, y2 = map(int, det[:4])
                     cls = int(results[0].boxes.cls[i])
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
                     cv2.putText(frame, names[cls], (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                    if len(names[cls]) > 0:
+                    if len(names[cls]) > 0 :
+                        current_detected_time = datetime.now()
                         if self.pre_name_of_emotion != names[cls] or self.pre_name_of_gesture != names[cls]:
-                            objects = "".join(names[int(cls)])
-                            for c in self.list_of_gesture:
-                                if names[cls] == c:
-                                    self.chat_display.insertPlainText(f"{objects} ")
-                                    self.pre_name_of_gesture = names[cls]
-                                else:
-                                    self.emotion_display.clear()
-                                    self.emotion_display.insertPlainText(f"{objects} ") 
-                                    self.pre_name_of_emotion = names[cls]
+                            if self.last_detected_time isd not None:
+                                time_difference = (current_detected_time - self.last_detected_time).total_seconds()
+                                objects = "".join(names[int(cls)])
+                                if time_difference >= 1:
+                                    for c in self.list_of_gesture:
+                                        if names[cls] == c:
+                                            self.chat_display.insertPlainText(f"{objects} ")
+                                            self.pre_name_of_gesture = names[cls]
+                                            
+                                        else:
+                                            self.emotion_display.clear()
+                                            self.emotion_display.insertPlainText(f"{objects} ") 
+                                            self.pre_name_of_emotion = names[cls]
+                                    self.last_detected_time = current_detected_time
+                                    
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             h, w, ch = frame_rgb.shape
             bytesPerLine = ch * w
