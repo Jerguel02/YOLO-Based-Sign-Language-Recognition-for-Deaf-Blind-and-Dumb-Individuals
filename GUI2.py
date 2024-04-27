@@ -1,12 +1,14 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QTextEdit, QPushButton, QVBoxLayout, QWidget, QHBoxLayout
 from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtCore import QEventLoop, QTimer, Qt, QUrl
+from PyQt5.QtMultimedia import QSound
+
 import cv2
 from ultralytics import YOLO
 from PIL import ImageQt
 from datetime import datetime
-
+import pyttsx3
 class YOLO_GUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -74,6 +76,11 @@ class YOLO_GUI(QMainWindow):
         self.model = YOLO("YOLOv8Checkpoint/YOLOv8Checkpoint/train4/weights/best.pt")
 
         self.last_detected_time = None
+        self.chat_text = ""
+        self.emotion_text = ""
+        self.engine = pyttsx3.init()
+        self.chat_beep = QSound("beep.wav")
+        self.emotion_beep = QSound("double-beep.wav")
     def update_frame(self):
         ret, frame = self.video.read()
         if ret:
@@ -87,22 +94,28 @@ class YOLO_GUI(QMainWindow):
                     cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 2)
                     cv2.putText(frame, names[cls], (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                     if len(names[cls]) > 0 :
-                        current_detected_time = datetime.now()
-                        if self.pre_name_of_emotion != names[cls] or self.pre_name_of_gesture != names[cls]:
-                            if self.last_detected_time isd not None:
-                                time_difference = (current_detected_time - self.last_detected_time).total_seconds()
-                                objects = "".join(names[int(cls)])
-                                if time_difference >= 1:
-                                    for c in self.list_of_gesture:
-                                        if names[cls] == c:
-                                            self.chat_display.insertPlainText(f"{objects} ")
-                                            self.pre_name_of_gesture = names[cls]
-                                            
-                                        else:
-                                            self.emotion_display.clear()
-                                            self.emotion_display.insertPlainText(f"{objects} ") 
-                                            self.pre_name_of_emotion = names[cls]
-                                    self.last_detected_time = current_detected_time
+                        #current_detected_time = datetime.now()
+                        if self.pre_name_of_gesture != names[cls]:
+                            #if self.last_detected_time is not None:
+                            #time_difference = (current_detected_time - self.last_detected_time).total_seconds()
+                            objects = "".join(names[int(cls)])
+                            #if time_difference >= 1:
+                            for c in self.list_of_gesture:
+                                if c == names[int(cls)]:
+                                    self.chat_text += f"{objects} "
+                                    self.chat_display.insertPlainText(f"{objects} ")
+                                    self.pre_name_of_gesture = names[cls]
+                                    break
+                        if self.pre_name_of_emotion != names[cls]:
+                            objects = "".join(names[int(cls)])
+                            for c in self.list_of_emotion:
+                                if c == names[int(cls)]:
+                                    self.emotion_display.clear()
+                                    self.emotion_text = f"{objects}"
+                                    self.emotion_display.insertPlainText(f"{objects}") 
+                                    self.pre_name_of_emotion = names[cls]
+                                    break
+                            #self.last_detected_time = current_detected_time
                                     
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             h, w, ch = frame_rgb.shape
@@ -112,10 +125,38 @@ class YOLO_GUI(QMainWindow):
 
             self.label.setPixmap(QPixmap.fromImage(qImg))
 
+    def speak_chat(self):
+        print("Message: " + self.chat_text)
+        self.speak(self.chat_text, 150)
+
+
+        
+    def speak_emotion(self):   
+        print("The person you are talking to seems to be: " + self.emotion_text)
+        self.speak("The person you are talking to seems to be: " + self.emotion_text, 150)
+
+
+    def speak(self, text, rate):
+        
+        self.engine.setProperty('rate', rate)
+        self.engine.say(text)
+        self.engine.runAndWait() 
+
     def submit_chat(self):
+        self.timer.stop()
+
+        self.chat_beep.play()
+        self.speak_chat()
+        loop = QEventLoop()
+        QTimer.singleShot(1000, loop.quit)
+        loop.exec_()
+        self.speak_emotion()
+        self.emotion_beep.play()
+        self.chat_text = ""
+        self.emotion_text = ""
         self.chat_display.clear()
         self.emotion_display.clear()
-
+        self.timer.start(30)
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     mainWindow = YOLO_GUI()
