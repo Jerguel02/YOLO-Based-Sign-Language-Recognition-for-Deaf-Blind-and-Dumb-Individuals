@@ -1,4 +1,4 @@
-YOLO-Based-Sign-Language-Recognition-for-Deaf-Blind-and-Dumb-Individuals
+<b>YOLO-Based-Sign-Language-Recognition-for-Deaf-Blind-and-Dumb-Individuals</b>
 
-Install Packages: pip install -r requirements
-Run: py GUI2.py
+<p><i>Install Packages</i>: pip install -r requirements</p>
+<p><i>Run</i>: py GUI2.py</p>
