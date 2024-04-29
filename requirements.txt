@@ -2,3 +2,4 @@ ultralytics
 PyQt5
 pillow
 opencv-python
+pyttsx3
