@@ -3,7 +3,6 @@ import wave
 def check_audio_format(filename):
     try:
         with wave.open(filename, 'rb') as wf:
-
             channels = wf.getnchannels()
             sample_width = wf.getsampwidth()
             frame_rate = wf.getframerate()
