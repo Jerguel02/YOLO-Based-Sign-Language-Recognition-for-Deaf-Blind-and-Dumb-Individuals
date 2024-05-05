@@ -6,7 +6,7 @@ import speech_recognition as sr
 import cv2
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QTextEdit, QPushButton, QVBoxLayout, QWidget, QHBoxLayout
 from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtCore import QTimer, Qt, QEventLoop
+from PyQt5.QtCore import QTimer, Qt, QEventLoop, QMetaObject, Qt, Q_ARG, pyqtSignal
 import threading
 import wave
 import pyaudio
@@ -52,24 +52,28 @@ class YOLO_GUI(QMainWindow):
         self.sign_language_images_folder = "sign_language_images"
         self.audio_filename = "audio/AUDIO.wav"
         self.recognizer = sr.Recognizer()
-
+        self.recording = False
+        self.recognized_text = ""
+        
     def record_audio(self):
         print("Recording...")
+        self.text_display.clear()
         self.recording_label.setVisible(True)
         self.record_button.setVisible(False)
         self.stop_record_button.setVisible(True)
-        QTimer.singleShot(1000, self.start_recording_thread)
+        loop = QEventLoop()
+        QTimer.singleShot(1000, loop.quit)
+        loop.exec_() 
+        thread1.start()
+        self._update_gui()
 
-    def start_recording_thread(self):
-        thread = threading.Thread(target=self._record_audio_thread)
-        thread.start()
 
     def _record_audio_thread(self):
-        CHUNK = 1024
+        CHUNK = 2048
         SAMPLE_FORMAT = pyaudio.paInt16
         CHANNELS = 1
         FS = 44100
-        DURATION = 5
+        DURATION = 9
         FILE_NAME = self.audio_filename
 
         p = pyaudio.PyAudio()
@@ -79,9 +83,13 @@ class YOLO_GUI(QMainWindow):
                         frames_per_buffer=CHUNK,
                         input=True)
         frames = []
+        self.recording = True
         for _ in range(0, int(FS / CHUNK * DURATION)):
-            data = stream.read(CHUNK)
-            frames.append(data)
+            if self.recording:
+                data = stream.read(CHUNK)
+                frames.append(data)
+            if not self.recording:
+                break
         stream.stop_stream()
         stream.close()
         p.terminate()
@@ -93,19 +101,24 @@ class YOLO_GUI(QMainWindow):
             wf.writeframes(b''.join(frames))
 
         print("Recording saved as", self.audio_filename)
+        self.recording = False
 
-        recognized_text = self.recognize_speech(self.audio_filename)
-        self.text_display.setPlainText(recognized_text)
-        self.display_sign_language_image(recognized_text)
-
+    def _update_gui(self):
+        self.recognized_text = self.recognize_speech(self.audio_filename)
+        self.text_display.setPlainText(self.recognized_text)
+        self.display_sign_language_image(self.recognized_text)
+        self.recognized_text = ""
         self.recording_label.setVisible(False)
         self.stop_record_button.setVisible(False)
         self.record_button.setVisible(True)
 
     def stop_record(self):
+        self.recording = False
         self.recording_label.setVisible(False)
         self.stop_record_button.setVisible(False)
         self.record_button.setVisible(True)
+
+
 
     def recognize_speech(self, filename):
         with sr.AudioFile(filename) as source:
