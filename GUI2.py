@@ -157,6 +157,8 @@ class YOLO_GUI(QMainWindow):
         self.chat_display.clear()
         self.emotion_display.clear()
         self.timer.start(30)
+
+        
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     mainWindow = YOLO_GUI()
