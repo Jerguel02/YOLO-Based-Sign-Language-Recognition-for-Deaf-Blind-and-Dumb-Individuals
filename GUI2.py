@@ -1,14 +1,20 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QTextEdit, QPushButton, QVBoxLayout, QWidget, QHBoxLayout
 from PyQt5.QtGui import QPixmap, QImage
-from PyQt5.QtCore import QEventLoop, QTimer, Qt, QUrl
+from PyQt5.QtCore import QEventLoop, QTimer, Qt, QUrl, pyqtSignal
 from PyQt5.QtMultimedia import QSound
-
+import sounddevice as sd
+from scipy.io.wavfile import write
+import speech_recognition as sr
+import wave
 import cv2
 from ultralytics import YOLO
 from PIL import ImageQt
 from datetime import datetime
 import pyttsx3
+
+
+
 class YOLO_GUI(QMainWindow):
     def __init__(self):
         super().__init__()
