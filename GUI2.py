@@ -354,8 +354,14 @@ class YOLO_GUI(QMainWindow):
         col = 0
         self.stop_recording_label.setVisible(False)
         self.stop_record_button.setVisible(False)
+        if (words == 'I'):
+            words = 'i_up'
+            image_path = os.path.join("sign_language_images/", words + ".jpg")
 
+        words = words.replace("I", "i_up")
+        print(words)
         image_path = os.path.join("sign_language_images/", words.lower() + ".jpg")
+
         if os.path.exists(image_path):
             image = cv2.imread(image_path)   
             if image is not None:
@@ -409,7 +415,24 @@ class YOLO_GUI(QMainWindow):
                             row += 1
                             col = 0
                     i += j
+                image_path = os.path.join("sign_language_images/", current_word.lower() + ".jpg")
+                if os.path.exists(image_path):
+                    image = cv2.imread(image_path)
+                    
+                    if image is not None:
+                        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                        h, w, ch = image_rgb.shape
+                        label = QLabel(self)
+                        pixmap = QPixmap(image_path)
+                        label.setPixmap(pixmap.scaled(int(h/3),int(w/3), Qt.KeepAspectRatio))
+                        label.setScaledContents(True)
     
+                        self.sign_language_layout.addWidget(label, row, col)
+                        col += 1
+                        if col == 12:
+                            row += 1
+                            col = 0
+                        i += 1
                 else:
                     for w in current_word:
                         image_path = os.path.join("sign_language_images/", w.lower() + ".jpg")
