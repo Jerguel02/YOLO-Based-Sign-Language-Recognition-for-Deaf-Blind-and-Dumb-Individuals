@@ -19,7 +19,7 @@ import os
 
 class AudioRecorder(QThread):
     signal = pyqtSignal(str)
-    
+    #recording_signal = pyqtSignal(bool)
     def __init__(self):
         super().__init__()
         self.audio_filename = "audio/AUDIO.wav"
@@ -29,9 +29,10 @@ class AudioRecorder(QThread):
         self.SAMPLE_FORMAT = pyaudio.paInt16
         self.CHANNELS = 1
         self.FS = 44100
-        self.DURATION = 9
+        self.DURATION = 5
 
     def run(self):
+        #recording = True
         p = pyaudio.PyAudio()
         stream = p.open(format=self.SAMPLE_FORMAT,
                         channels=self.CHANNELS,
@@ -56,6 +57,8 @@ class AudioRecorder(QThread):
             wf.writeframes(b''.join(frames))
     
         recognized_text = self.recognize_speech(self.audio_filename)
+        recording = False
+        #self.recording_signal.emit(recording)
         self.signal.emit(recognized_text)
     def stop_recording(self):
         print("Thread is terminating...")
@@ -306,9 +309,19 @@ class YOLO_GUI(QMainWindow):
         
 
     def _recorded_audio_thread(self, recognized_text):
-        if isinstance(recognized_text, str):  # Kiểm tra xem recognized_text có phải là chuỗi không
+        if isinstance(recognized_text, str):  
             self.text_record_display.setPlainText(recognized_text)
             self.display_sign_language_image(recognized_text)
+            self.stop_record_button.setEnabled(False)
+            self.recording_thread.stop_recording()
+            self.recording_label.setVisible(False)
+            self.stop_recording_label.setVisible(True)
+            loop = QEventLoop()
+            QTimer.singleShot(3000, loop.quit)
+            loop.exec_()
+            self.stop_recording_label.setVisible(False)
+            self.stop_record_button.setVisible(False)
+            self.record_button.setVisible(True)
         else:
             print("Error: recognized_text is not a string")
 
