@@ -39,7 +39,7 @@ class AudioRecorder(QThread):
         self.SAMPLE_FORMAT = pyaudio.paInt16
         self.CHANNELS = 1
         self.FS = 44100
-        self.DURATION = 5
+        self.DURATION = 10
 
     def run(self):
         #recording = True
@@ -127,6 +127,7 @@ class YOLO_GUI(QMainWindow):
         #self.sign_language_label = QLabel(self)
         #self.sign_language_label.setAlignment(Qt.AlignLeft)
         self.sign_language_layout = QGridLayout()
+        self.sign_language_layout.setAlignment(Qt.AlignLeft)
         #self.setCentralWidget(self.sign_language_layout)
         self.recording_label = QLabel("Recording...", self)
         recording_font = QFont()
@@ -319,13 +320,11 @@ class YOLO_GUI(QMainWindow):
     def stop_record(self):
         self.stop_record_button.setEnabled(False)
         self.recording_thread.stop_recording()
-        self.recording_label.setVisible(False)
-        self.stop_recording_label.setVisible(True)
+        
         loop = QEventLoop()
         QTimer.singleShot(3000, loop.quit)
         loop.exec_()
-        self.stop_recording_label.setVisible(False)
-        self.stop_record_button.setVisible(False)
+        
         self.record_button.setVisible(True)
         
 
@@ -335,62 +334,102 @@ class YOLO_GUI(QMainWindow):
             self.stop_record_button.setEnabled(False)
             self.display_sign_language_image(recognized_text)
             self.recording_thread.stop_recording()
-            self.recording_label.setVisible(False)
-            self.stop_recording_label.setVisible(True)
-            loop = QEventLoop()
-            QTimer.singleShot(3000, loop.quit)
-            loop.exec_()
+            
             self.stop_recording_label.setVisible(False)
             self.stop_record_button.setVisible(False)
             self.record_button.setVisible(True)
         else:
             print("Error: recognized_text is not a string")
 
-    def display_sign_language_image(self, word):
+    def display_sign_language_image(self, words):
         self.timer.stop()
-        text_to_images = word.split()
+
+        self.recording_label.setVisible(False)
+        self.stop_recording_label.setVisible(True)
+        loop = QEventLoop()
+        QTimer.singleShot(3000, loop.quit)
+        loop.exec_()
+        text_to_images = words.split(' ')
         row = 0
         col = 0
+        self.stop_recording_label.setVisible(False)
+        self.stop_record_button.setVisible(False)
 
-        for w in word:
-            image_path = os.path.join("sign_language_images/", w.lower() + ".jpg")
-            if os.path.exists(image_path):
-                image = cv2.imread(image_path)
-                """image = cv2.imread(image_path)
-                if image is not None:
-                    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                    h, w, ch = image_rgb.shape
-                    bytesPerLine = ch * w
-                    qImg = QImage(image_rgb.data, w, h, bytesPerLine, QImage.Format_RGB888)
-                    qImg = qImg.scaled(200, 200, Qt.KeepAspectRatio)
-                    self.sign_language_label.setPixmap(QPixmap.fromImage(qImg))
-                    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                    h, w, ch = image_rgb.shape
-                    bytesPerLine = ch * h
-                    qImg = QImage(image_rgb.data, w, h, bytesPerLine, QImage.Format_RGB888)
-                    qImg = qImg.scaled(50, 50, Qt.KeepAspectRatio)
-                    pixmap = QPixmap.fromImage(qImg)
-                    label = QLabel()
-                    label.setPixmap(pixmap)
-                    self.sign_language_layout.addWidget(label)"""
+        image_path = os.path.join("sign_language_images/", words.lower() + ".jpg")
+        if os.path.exists(image_path):
+            image = cv2.imread(image_path)   
+            if image is not None:
+                image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                h, w, ch = image_rgb.shape
+                label = QLabel(self)
+                pixmap = QPixmap(image_path)
+                label.setPixmap(pixmap.scaled(int(h/3),int(w/3), Qt.KeepAspectRatio))
+                label.setScaledContents(True)
+                self.sign_language_layout.addWidget(label, row, col)
+                col += 1
+                if col == 12:
+                    row += 1
+                    col = 0
+        else: 
+            i = 0
+            while i < len(text_to_images):
+                current_word = text_to_images[i]
+                image_path = os.path.join("sign_language_images/", current_word.lower() + ".jpg")
+                phrase = ""
+                phrase_list = ['to be happy', 'thank you']
+                j = 0
+                in_phrase_list = False
+                while (i + j) < len(text_to_images) and in_phrase_list == False:
+                    phrase += text_to_images[i+j]
+                    j += 1
+                    for ph in phrase_list:
+                        phrase.strip(" ")
+                        print(phrase)
+                        if ph == phrase:
+                            in_phrase_list = True
+                            break
+                    if in_phrase_list:
+                            break
+                    phrase += " "
+                image_path = os.path.join("sign_language_images/", phrase.lower() + ".jpg")
+                if os.path.exists(image_path):
+                    image = cv2.imread(image_path)
                     
-                if image is not None:
-                    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                    h, w, ch = image_rgb.shape
-                    label = QLabel(self)
-                    pixmap = QPixmap(image_path)
-                    label.setPixmap(pixmap.scaled(int(h/3),int(w/3), Qt.KeepAspectRatio))
-                    label.setScaledContents(True)
-
-                    self.sign_language_layout.addWidget(label, row, col)
-                    col += 1
-                    if col == 15:
-                        row += 1
-                        col = 0
-
-            else:
-                print("Sign language image not found for word:", word)
-            self.timer.start(30)
+                    if image is not None:
+                        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                        h, w, ch = image_rgb.shape
+                        label = QLabel(self)
+                        pixmap = QPixmap(image_path)
+                        label.setPixmap(pixmap.scaled(int(h/3),int(w/3), Qt.KeepAspectRatio))
+                        label.setScaledContents(True)
+    
+                        self.sign_language_layout.addWidget(label, row, col)
+                        col += 1
+                        if col == 12:
+                            row += 1
+                            col = 0
+                    i += j
+    
+                else:
+                    for w in current_word:
+                        image_path = os.path.join("sign_language_images/", w.lower() + ".jpg")
+                        if os.path.exists(image_path):
+                            image = cv2.imread(image_path)
+                            if image is not None:
+                                image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                                h, w, ch = image_rgb.shape
+                                label = QLabel(self)
+                                pixmap = QPixmap(image_path)
+                                label.setPixmap(pixmap.scaled(int(h/3),int(w/3), Qt.KeepAspectRatio))
+                                label.setScaledContents(True)
+            
+                                self.sign_language_layout.addWidget(label, row, col)
+                                col += 1
+                                if col == 12:
+                                    row += 1
+                                    col = 0
+                    i += 1
+        self.timer.start(30)
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     mainWindow = YOLO_GUI()
