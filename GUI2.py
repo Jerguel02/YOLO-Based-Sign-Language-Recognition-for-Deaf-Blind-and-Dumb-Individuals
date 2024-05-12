@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QTextEdit, QPushButton, QVBoxLayout, QWidget, QHBoxLayout, QGridLayout
-from PyQt5.QtGui import QPixmap, QImage, QFont
+from PyQt5.QtGui import QPixmap, QImage, QFont, QTransform
 from PyQt5.QtCore import QEventLoop, QTimer, Qt, QUrl, pyqtSignal, QThread, QSize, QThreadPool, QRunnable
 from PyQt5.QtMultimedia import QSound
 import sounddevice as sd
@@ -165,7 +165,21 @@ class YOLO_GUI(QMainWindow):
         self.text_display.setReadOnly(True)
         self.text_display.setMaximumHeight(50)
         #----
+        self.copyright = QLabel("YOLO-Based Sign Language Recognition For Deaf, Blind and Dumb Inviduals (C) 2024 by Pham Huu Nghia and Nguyen Xuan Hai", self)
+        copyright_font = QFont()
+        copyright_font.setPointSize(8)
+        self.copyright.setAlignment(Qt.AlignCenter)
+        self.copyright.setFont(copyright_font)
+
+
+        self.logo = QPixmap("logo/logo.png")
+        self.image_logo = QLabel(self)
+        self.image_logo.setPixmap(self.logo.scaled(60,70,Qt.KeepAspectRatio))
+        self.image_logo.setAlignment(Qt.AlignCenter)
+            
+
         main_layout = QVBoxLayout()
+        
         chat_layout = QHBoxLayout()
         chat_layout.addWidget(self.message_label)
         chat_layout.addWidget(self.chat_display)
@@ -192,6 +206,12 @@ class YOLO_GUI(QMainWindow):
         main_layout.addLayout(text_record_layout)
         main_layout.addWidget(self.text_record_display)
 
+        copyright_layout = QHBoxLayout()
+        copyright_layout.addWidget(self.copyright)
+        copyright_layout.addWidget(self.image_logo)
+        copyright_layout.setAlignment(Qt.AlignBottom)
+
+        main_layout.addLayout(copyright_layout)
         central_widget = QWidget(self)
         central_widget.setLayout(main_layout)
         self.setCentralWidget(central_widget)
@@ -208,8 +228,8 @@ class YOLO_GUI(QMainWindow):
 
         self.list_of_emotion = ["anger", "contempt", "disgust", "fear", "happy", "neutral", "sad", "surprise"]
         self.list_of_gesture = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "additional", "alcohol", "allergy", "bacon", "bag", "barbecue", "bill", "biscuit", "bitter", "bread", "burger", "bye", "cake", "cash", "cheese", "chicken", "coke", "cold", "cost", "coupon", "credit card", "cup", "dessert", "drink", "drive", "eat", "eggs", "enjoy", "fork", "french fries", "fresh", "hello", "hot", "icecream", "ingredients", "juicy", "ketchup", "lactose", "lettuce", "lid", "manager", "menu", "milk", "mustard", "napkin", "no", "order", "pepper", "pickle", "pizza", "please", "ready", "receipt", "refill", "repeat", "safe", "salt", "sandwich", "sauce", "small", "soda", "sorry", "spicy", "spoon", "straw", "sugar", "sweet", "thank-you", "tissues", "tomato", "total", "urgent", "vegetables", "wait", "warm", "water", "what", "would", "yoghurt", "your"]
-        self.pre_name_of_emotion = ""
-        self.pre_name_of_gesture = ""
+        #self.pre_name_of_emotion = ""
+        #self.pre_name_of_gesture = ""
         self.model = YOLO("YOLOv8Checkpoint/YOLOv8Checkpoint/train4/weights/best.pt")
 
         self.last_detected_time = None
@@ -221,7 +241,11 @@ class YOLO_GUI(QMainWindow):
 
         self.recording_thread = AudioRecorder()
         self.recording_thread.signal.connect(self._recorded_audio_thread)
-
+        self.latch_count = 0
+        self.latch_word = ""
+        self.flipped = False
+        self.rotate_angle = 0
+        
     def update_frame(self):
         ret, frame = self.video.read()
         if ret:
@@ -236,35 +260,46 @@ class YOLO_GUI(QMainWindow):
                     cv2.putText(frame, names[cls], (x1, y1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                     if len(names[cls]) > 0 :
                         #current_detected_time = datetime.now()
-                        if self.pre_name_of_gesture != names[cls]:
-                            #if self.last_detected_time is not None:
-                            #time_difference = (current_detected_time - self.last_detected_time).total_seconds()
-                            objects = "".join(names[int(cls)])
-                            #if time_difference >= 1:
-                            for c in self.list_of_gesture:
-                                if c == names[int(cls)]:
+                        
+                    #if self.pre_name_of_gesture != names[cls]:
+                        #if self.last_detected_time is not None:
+                        #time_difference = (current_detected_time - self.last_detected_time).total_seconds()
+                        objects = "".join(names[int(cls)])
+                        #if time_difference >= 1:
+                        for c in self.list_of_gesture:
+                            if c == names[int(cls)]:
+                                self.detection_deadline(names[int(cls)])
+                                if self.latch_count == 10:
                                     self.chat_text += f"{objects} "
                                     self.chat_display.insertPlainText(f"{objects} ")
-                                    self.pre_name_of_gesture = names[cls]
+                                    #self.pre_name_of_gesture = names[cls]
+                                    self.latch_count = 0
                                     break
-                        if self.pre_name_of_emotion != names[cls]:
-                            objects = "".join(names[int(cls)])
-                            for c in self.list_of_emotion:
-                                if c == names[int(cls)]:
-                                    self.emotion_display.clear()
-                                    self.emotion_text = f"{objects}"
-                                    self.emotion_display.insertPlainText(f"{objects}") 
-                                    self.pre_name_of_emotion = names[cls]
-                                    break
-                            #self.last_detected_time = current_detected_time
+                    #if self.pre_name_of_emotion != names[cls]:
+                        #objects = "".join(names[int(cls)])
+                        for c in self.list_of_emotion:
+                            if c == names[int(cls)]:
+                                self.emotion_display.clear()
+                                self.emotion_text = f"{objects}"
+                                self.emotion_display.insertPlainText(f"{objects}") 
+                                #self.pre_name_of_emotion = names[cls]
+                                break
+                        #self.last_detected_time = current_detected_time
                                     
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             h, w, ch = frame_rgb.shape
             bytesPerLine = ch * w
             qImg = QImage(frame_rgb.data, w, h, bytesPerLine, QImage.Format_RGB888)
-            qImg = qImg.scaled(int(self.label.width()/2), int(self.label.height()/2), Qt.KeepAspectRatio)
+            qImg = qImg.scaled(int(self.label.width()), int(self.label.height()), Qt.KeepAspectRatio)
 
             self.label.setPixmap(QPixmap.fromImage(qImg))
+    def detection_deadline(self, word_detect):
+        if (word_detect == self.latch_word):
+            self.latch_count += 1
+        else:
+            self.latch_word = word_detect
+            self.latch_count = 0
+
 
     def speak_chat(self):
         print("Message: " + self.chat_text)
